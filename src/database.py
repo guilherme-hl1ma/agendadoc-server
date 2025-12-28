@@ -1,4 +1,4 @@
-from typing import Annotated, final
+from typing import Annotated
 from fastapi import Depends
 from sqlmodel import Session, create_engine
 import os

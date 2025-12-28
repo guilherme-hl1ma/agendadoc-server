@@ -1,6 +1,4 @@
 import base64
-import json
-from fastapi import HTTPException, Response
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 from starlette.middleware.base import BaseHTTPMiddleware
