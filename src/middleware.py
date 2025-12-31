@@ -1,8 +1,5 @@
 import base64
-from uuid import uuid4
 import redis
-from starlette.responses import Response
-from starlette.requests import Request
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -11,8 +8,8 @@ from src.models import User
 from src.database import engine
 from src.security.encrypt_password import verify_password
 
-
-WHITELIST_PATHS = ["/auth/signup", "/docs", "/openapi.json", "/redoc"]
+AUTH_PATHS = ["/auth/signup", "/auth/login"]
+WHITELIST_PATHS = ["/docs", "/openapi.json", "/redoc"]
 
 
 redis_instance = redis.Redis(host="localhost", port=6379, decode_responses=True)
@@ -21,7 +18,7 @@ redis_instance = redis.Redis(host="localhost", port=6379, decode_responses=True)
 class BasicAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         path = request.url.path
-        if path in WHITELIST_PATHS:
+        if path in WHITELIST_PATHS or path in AUTH_PATHS:
             return await call_next(request)
 
         auth = request.headers.get("Authorization")
@@ -60,8 +57,7 @@ class SessionBasedAuthMiddleware(BaseHTTPMiddleware):
         try:
             path = request.url.path
 
-            print("path", path)
-            if path in WHITELIST_PATHS:
+            if path in WHITELIST_PATHS or path in AUTH_PATHS:
                 return await call_next(request)
 
             user_session = request.cookies.get("ses_num")
@@ -71,6 +67,12 @@ class SessionBasedAuthMiddleware(BaseHTTPMiddleware):
                     status_code=401, content={"detail": "Authorization missing."}
                 )
 
-            await call_next(request)
+            email = redis_instance.get(f"session_id:{user_session}")
+            if not email:
+                return JSONResponse(
+                    status_code=401, content={"detail": "Invalid session."}
+                )
+
+            return await call_next(request)
         except Exception as e:
             print(e)

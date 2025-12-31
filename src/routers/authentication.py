@@ -14,9 +14,9 @@ redis_instance = redis.Redis(host="localhost", port=6379, decode_responses=True)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+"""
 @router.post("/signup")
 def signup(user: User, session: SessionDep):
-    pass
     try:
         user_db = session.exec(select(User).where(User.email == user.email)).first()
         if user_db:
@@ -36,6 +36,7 @@ def signup(user: User, session: SessionDep):
         raise e
 
     return JSONResponse(status_code=201, content={"detail": "User registered."})
+"""
 
 
 @router.post("/signup")
@@ -48,6 +49,7 @@ def signup_session(user: User, session: SessionDep, request: Request):
                 detail="E-mail already exists. Try again using another one.",
             )
 
+        email = user.email
         password = user.password
         hashed = hash_password(password)
         user.password = hashed
@@ -55,11 +57,37 @@ def signup_session(user: User, session: SessionDep, request: Request):
         session_id = uuid4()
         response = JSONResponse(status_code=201, content={"detail": "User registered."})
         response.set_cookie("ses_num", str(session_id))
-        redis_instance.set(f"user:{user.email}:session_id", str(session_id))
+        redis_instance.set(f"session_id:{session_id}", email)
 
         session.add(user)
         session.commit()
         session.refresh(user)
+
+        return response
+    except HTTPException as e:
+        raise e
+
+
+@router.post("/login")
+def signin_session(user: User, session: SessionDep, request: Request):
+    try:
+        email = user.email
+        password = user.password
+        hashed = hash_password(password)
+
+        user_db = session.exec(
+            select(User).where(User.email == email, User.password == hashed)
+        ).first()
+        if not user_db:
+            raise HTTPException(
+                status_code=404,
+                detail="Invalid user. Try again.",
+            )
+
+        session_id = uuid4()
+        response = JSONResponse(status_code=200, content={"detail": "OK"})
+        response.set_cookie("ses_num", str(session_id))
+        redis_instance.set(f"session_id:{session_id}", email)
 
         return response
     except HTTPException as e:
