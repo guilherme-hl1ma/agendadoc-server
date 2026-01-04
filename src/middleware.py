@@ -8,7 +8,7 @@ from src.models import User
 from src.database import engine
 from src.security.encrypt_password import verify_password
 
-AUTH_PATHS = ["/auth/signup", "/auth/login"]
+AUTH_PATHS = ["/auth/signup", "/auth/login", "/auth/logout"]
 WHITELIST_PATHS = ["/docs", "/openapi.json", "/redoc"]
 
 
